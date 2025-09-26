@@ -22,12 +22,7 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v2
       
-    - name: Build with Gradle
-      run: |
-        chmod +x ./gradlew
-        ./gradlew build
-      env:
-        ANDROID_SDK_ROOT: ${{ runner.workspace }}/android-sdk 
+    # Removed the Gradle build step since this is a Cordova project
 
     - name: Install Node.js 20
       uses: actions/setup-node@v4
