@@ -29,15 +29,13 @@ jobs:
         cd cctv-app
         npm install
     
-    - name: Fix Gradle version for Cordova
+    - name: Patch Cordova Gradle script
       run: |
         cd cctv-app
         # Ensure platforms directory exists
         cordova platform add android || true
-        # Downgrade Gradle to a compatible version
-        sed -i 's/gradle-9.1.0/gradle-8.3/g' platforms/android/gradle/wrapper/gradle-wrapper.properties
-        # Update distributionUrl if needed
-        sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.3-all.zip|g' platforms/android/gradle/wrapper/gradle-wrapper.properties
+        # Add XmlParser import to cordova.gradle
+        sed -i '1s/^/import groovy.xml.XmlParser;\n/' platforms/android/CordovaLib/cordova.gradle
     
     - name: Build Android APK
       run: |
