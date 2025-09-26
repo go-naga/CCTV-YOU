@@ -22,53 +22,43 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v2
       
-    - name: Install Node.js 20
+    - name: Install Node.js 16
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '16'  # Using Node 16 for better compatibility with Cordova
 
     - name: Install Cordova
-      run: npm install -g cordova@11
+      run: |
+        npm install -g cordova@10.0.0  # Using a more stable version
+        cordova --version  # Debug: Print version
 
     - name: Create Cordova project
       run: |
-        # Create a new Cordova project
-        cordova create cctv-app com.example.cctvyou "CCTV YOU"
+        # Create a new Cordova project with verbose output
+        cordova create cctv-app com.example.cctvyou "CCTV YOU" --verbose
+        ls -la  # Debug: List files
         
-        # Copy your source files if they exist
-        if [ -d "www" ]; then
-          cp -r www/* cctv-app/www/
-        fi
-        
-        # If you have any custom config, copy it
-        if [ -f "config.xml" ]; then
-          cp config.xml cctv-app/
-        fi
-
     - name: Setup Android SDK tools
       run: |
-        cd cctv-app
         mkdir -p $ANDROID_SDK_ROOT
         cd $ANDROID_SDK_ROOT
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline.zip
-        unzip cmdline.zip
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+        unzip commandlinetools-linux-9477386_latest.zip
         mkdir -p cmdline-tools/latest
         mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
-        if [ ! -f "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/tools
-          mv $ANDROID_SDK_ROOT/cmdline-tools/latest/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/ 2>/dev/null || true
-        fi
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-33" "build-tools;33.0.2" "cmdline-tools;latest"
+        ls -la cmdline-tools/latest/bin/  # Debug: Check if sdkmanager exists
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-30" "build-tools;30.0.3"
 
     - name: Add Android platform
       run: |
         cd cctv-app
-        cordova platform add android@7.0.0
+        cordova platform add android@10.1.2 --verbose  # Using a specific version with verbose output
 
     - name: Build APK
       run: |
         cd cctv-app
-        cordova build android --release || cordova build android
+        cordova requirements  # Debug: Check if all requirements are met
+        cordova build android --verbose  # Build with verbose output
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
@@ -76,4 +66,3 @@ jobs:
         name: android-apk
         path: |
           cctv-app/platforms/android/app/build/outputs/apk/debug/*.apk
-          cctv-app/platforms/android/app/build/outputs/apk/release/*.apk
