@@ -22,24 +22,46 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v2
       
-    # Removed the Gradle build step since this is a Cordova project
-
     - name: Install Node.js 20
       uses: actions/setup-node@v4
       with:
         node-version: '20'
 
-    - name: Install Cordova & Android tools
+    - name: Install Cordova
+      run: npm install -g cordova@11
+
+    # Check if this is an existing Cordova project or needs initialization
+    - name: Check Cordova project structure
+      id: check_cordova
       run: |
-        npm install -g cordova@11
+        if [ -f "config.xml" ]; then
+          echo "is_cordova_project=true" >> $GITHUB_OUTPUT
+        else
+          echo "is_cordova_project=false" >> $GITHUB_OUTPUT
+        fi
+
+    # Initialize Cordova project if needed
+    - name: Initialize Cordova project
+      if: steps.check_cordova.outputs.is_cordova_project != 'true'
+      run: |
+        cordova create cctv-you com.example.cctvyou "CCTV YOU"
+        cd cctv-you
+        # Copy your source files if needed
+        cp -r ../www/* www/ 2>/dev/null || true
+        echo "Created new Cordova project"
+        
+    # Set working directory based on project structure
+    - name: Setup Android SDK tools
+      run: |
+        WORK_DIR="${{ steps.check_cordova.outputs.is_cordova_project == 'true' && '.' || 'cctv-you' }}"
+        cd $WORK_DIR
+        
         mkdir -p $ANDROID_SDK_ROOT
         cd $ANDROID_SDK_ROOT
         wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline.zip
         unzip cmdline.zip
-        # Create proper directory structure for command-line tools
         mkdir -p cmdline-tools/latest
         mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
-        # Fix the directory structure if needed
         if [ ! -f "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
           mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/tools
           mv $ANDROID_SDK_ROOT/cmdline-tools/latest/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/ 2>/dev/null || true
@@ -49,10 +71,14 @@ jobs:
 
     - name: Add Android platform
       run: |
-        cordova platform add android@12.0.0
+        WORK_DIR="${{ steps.check_cordova.outputs.is_cordova_project == 'true' && '.' || 'cctv-you' }}"
+        cd $WORK_DIR
+        cordova platform add android@7.0.0
 
     - name: Build APK
       run: |
+        WORK_DIR="${{ steps.check_cordova.outputs.is_cordova_project == 'true' && '.' || 'cctv-you' }}"
+        cd $WORK_DIR
         cordova build android --release || cordova build android
 
     - name: Upload APK
@@ -60,5 +86,5 @@ jobs:
       with:
         name: android-apk
         path: |
-          platforms/android/app/build/outputs/apk/debug/*.apk
-          platforms/android/app/build/outputs/apk/release/*.apk
+          ${{ steps.check_cordova.outputs.is_cordova_project == 'true' && '.' || 'cctv-you' }}/platforms/android/app/build/outputs/apk/debug/*.apk
+          ${{ steps.check_cordova.outputs.is_cordova_project == 'true' && '.' || 'cctv-you' }}/platforms/android/app/build/outputs/apk/release/*.apk
