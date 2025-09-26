@@ -13,68 +13,39 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Set up JDK 17
+    - name: Set up JDK
       uses: actions/setup-java@v3
       with:
         distribution: 'temurin'
         java-version: '17'
     
-    # Skip the android-actions/setup-android@v2 action and set up Android SDK manually
-    
-    - name: Install Node.js 18
-      uses: actions/setup-node@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
       with:
         node-version: '18'
-
-    - name: Install Cordova
-      run: |
-        npm install -g cordova@11.0.0
-        cordova --version
-
-    - name: Create Cordova project
-      run: |
-        cordova create cctv-app com.example.cctvyou "CCTV YOU"
-        
-    - name: Setup Android SDK manually
-      run: |
-        export ANDROID_SDK_ROOT=$HOME/android-sdk
-        mkdir -p $ANDROID_SDK_ROOT
-        cd $ANDROID_SDK_ROOT
-        
-        # Download and install command line tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-        unzip commandlinetools-linux-9477386_latest.zip
-        
-        # Create the expected directory structure
-        mkdir -p cmdline-tools/latest
-        mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
-        
-        # Fix directory structure if needed
-        if [ ! -f "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
-          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/tools
-          mv $ANDROID_SDK_ROOT/cmdline-tools/latest/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/ 2>/dev/null || true
-        fi
-        
-        # Install required SDK components
-        echo y | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-        
-        # Add to PATH
-        echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-        echo "PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_ENV
-
-    - name: Add Android platform
+    
+    - name: Install dependencies
       run: |
         cd cctv-app
-        cordova platform add android@12.0.0
-
-    - name: Build APK
+        npm install
+    
+    - name: Fix Gradle version for Cordova
       run: |
         cd cctv-app
-        cordova build android
-
+        # Ensure platforms directory exists
+        cordova platform add android || true
+        # Downgrade Gradle to a compatible version
+        sed -i 's/gradle-9.1.0/gradle-8.3/g' platforms/android/gradle/wrapper/gradle-wrapper.properties
+        # Update distributionUrl if needed
+        sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.3-all.zip|g' platforms/android/gradle/wrapper/gradle-wrapper.properties
+    
+    - name: Build Android APK
+      run: |
+        cd cctv-app
+        cordova build android --release
+    
     - name: Upload APK
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
-        name: android-apk
-        path: |
-          cctv-app/platforms/android/app/build/outputs/apk/debug/*.apk
+        name: app-release
+        path: cctv-app/platforms/android/app/build/outputs/apk/release/*.apk
