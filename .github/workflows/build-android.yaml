@@ -40,9 +40,15 @@ jobs:
         mkdir -p $ANDROID_SDK_ROOT
         cd $ANDROID_SDK_ROOT
         wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline.zip
-        unzip cmdline.zip -d cmdline-tools
+        unzip cmdline.zip
+        # Create proper directory structure for command-line tools
         mkdir -p cmdline-tools/latest
-        mv cmdline-tools/* cmdline-tools/latest/ || true
+        mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
+        # Fix the directory structure if needed
+        if [ ! -f "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/tools
+          mv $ANDROID_SDK_ROOT/cmdline-tools/latest/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/ 2>/dev/null || true
+        fi
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-33" "build-tools;33.0.2" "cmdline-tools;latest"
         export PATH=$PATH:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
 
