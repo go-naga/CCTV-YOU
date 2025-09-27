@@ -27,45 +27,27 @@ jobs:
       with:
         node-version: '20'
 
-    - name: Install Cordova
-      run: npm install -g cordova@11
+- name: Initialize Cordova project
+  if: steps.check_cordova.outputs.is_cordova_project != 'true'
+  run: |
+    cordova create cctv-you com.example.cctvyou "CCTV YOU"
+    echo "Created new Cordova project"
 
-    # Check if this is an existing Cordova project or needs initialization
-    - name: Check Cordova project structure
-      id: check_cordova
-      run: |
-        if [ -f "config.xml" ]; then
-          echo "is_cordova_project=true" >> $GITHUB_OUTPUT
-        else
-          echo "is_cordova_project=false" >> $GITHUB_OUTPUT
-        fi
+- name: Add Android platform
+  run: |
+    cd cctv-you
+    cordova platform add android@12.0.0
 
-    # Initialize Cordova project if needed
-    - name: Initialize Cordova project
-      if: steps.check_cordova.outputs.is_cordova_project != 'true'
-      run: |
-        cordova create cctv-you com.example.cctvyou "CCTV YOU"
-        cd cctv-you
-        # Copy your source files if needed
-        cp -r ../www/* www/ 2>/dev/null || true
-        echo "Created new Cordova project"
-        
-    - name: Add Android platform
-      run: |
-        WORK_DIR="${{ steps.check_cordova.outputs.is_cordova_project == 'true' && '.' || 'cctv-you' }}"
-        cd $WORK_DIR
-        cordova platform add android@12.0.0
+- name: Build APK
+  run: |
+    cd cctv-you
+    cordova build android --verbose
 
-    - name: Build APK
-      run: |
-        WORK_DIR="${{ steps.check_cordova.outputs.is_cordova_project == 'true' && '.' || 'cctv-you' }}"
-        cd $WORK_DIR
-        cordova build android --verbose
+- name: Upload APK
+  uses: actions/upload-artifact@v4
+  with:
+    name: android-apk
+    path: |
+      cctv-you/platforms/android/app/build/outputs/apk/debug/*.apk
+      cctv-you/platforms/android/app/build/outputs/apk/release/*.apk
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: android-apk
-        path: |
-          ${{ steps.check_cordova.outputs.is_cordova_project == 'true' && '.' || 'cctv-you' }}/platforms/android/app/build/outputs/apk/debug/*.apk
-          ${{ steps.check_cordova.outputs.is_cordova_project == 'true' && '.' || 'cctv-you' }}/platforms/android/app/build/outputs/apk/release/*.apk
